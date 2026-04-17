@@ -1,0 +1,20 @@
+[package]
+name = "ai-generator"
+version = "1.0.0"
+description = "AI Image & Video Generator"
+license = "MIT"
+repository = "https://github.com/your-username/ai-generator"
+
+[dependencies]
+"python/python" = "^3.11"
+
+[[command]]
+name = "serve"
+module = "python:python"
+runner = "wasi"
+
+[command.annotations]
+wasi = { memory = "4GiB" }
+
+[fs]
+"/static" = "./static"
