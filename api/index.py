@@ -13,84 +13,6 @@ DEFAULT_API_KEY = os.environ.get("API_KEY", "")
 DEFAULT_IMAGE_MODEL = os.environ.get("IMAGE_MODEL", "dall-e-3")
 DEFAULT_VIDEO_MODEL = os.environ.get("VIDEO_MODEL", "")
 
-def handler(request):
-    """Vercel serverless handler"""
-    
-    # CORS headers
-    headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Content-Type": "application/json"
-    }
-    
-    # Handle OPTIONS preflight
-    if request.method == "OPTIONS":
-        return {
-            "statusCode": 204,
-            "headers": headers,
-            "body": ""
-        }
-    
-    # Handle GET requests
-    if request.method == "GET":
-        path = request.path
-        
-        # API config endpoint
-        if path == "/api/config":
-            config = {
-                "api_base": DEFAULT_API_BASE,
-                "image_model": DEFAULT_IMAGE_MODEL,
-                "video_model": DEFAULT_VIDEO_MODEL,
-                "has_api_key": bool(DEFAULT_API_KEY)
-            }
-            return {
-                "statusCode": 200,
-                "headers": headers,
-                "body": json.dumps(config)
-            }
-        
-        return {
-            "statusCode": 404,
-            "headers": headers,
-            "body": json.dumps({"error": "Not found"})
-        }
-    
-    # Handle POST requests
-    if request.method == "POST":
-        path = request.path
-        
-        if path == "/api/generate":
-            try:
-                body = request.body
-                if isinstance(body, bytes):
-                    body = body.decode('utf-8')
-                
-                result, status_code = handle_generate(body)
-                return {
-                    "statusCode": status_code,
-                    "headers": headers,
-                    "body": json.dumps(result)
-                }
-            except Exception as e:
-                return {
-                    "statusCode": 500,
-                    "headers": headers,
-                    "body": json.dumps({"error": str(e)})
-                }
-        
-        return {
-            "statusCode": 404,
-            "headers": headers,
-            "body": json.dumps({"error": "Not found"})
-        }
-    
-    return {
-        "statusCode": 405,
-        "headers": headers,
-        "body": json.dumps({"error": "Method not allowed"})
-    }
-
 
 def handle_generate(body):
     """Handle image/video generation requests"""
@@ -102,7 +24,6 @@ def handle_generate(body):
         if not prompt:
             return {"error": "Missing prompt parameter"}, 400
 
-        # 支援前端傳入的 API 配置
         api_key = data.get("api_key") or DEFAULT_API_KEY
         api_base = data.get("api_base") or DEFAULT_API_BASE
         image_model = data.get("image_model") or DEFAULT_IMAGE_MODEL
@@ -111,7 +32,6 @@ def handle_generate(body):
         if not api_key:
             return {"error": "API Key not configured"}, 500
 
-        # 根據生成類型選擇端點
         if gen_type == "text-to-video":
             endpoint = f"{api_base}/videos/generations"
             duration = data.get("duration", 5)
@@ -178,7 +98,6 @@ def handle_generate(body):
             }
 
         else:
-            # Text → Image (預設)
             endpoint = f"{api_base}/images/generations"
             size = data.get("size", "1024x1024")
             n = data.get("n", 1)
@@ -191,7 +110,6 @@ def handle_generate(body):
             if size:
                 payload["size"] = size
 
-        # Make request to external API
         req = urllib.request.Request(
             endpoint,
             data=json.dumps(payload).encode('utf-8'),
@@ -215,3 +133,78 @@ def handle_generate(body):
             return {"error": "API request failed"}, e.code
     except Exception as e:
         return {"error": str(e)}, 500
+
+
+def handler(request, context):
+    """Vercel serverless handler - required entry point"""
+    
+    # CORS headers
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Content-Type": "application/json"
+    }
+    
+    # Get HTTP method
+    method = request.get('httpMethod', 'GET')
+    path = request.get('path', '/')
+    body = request.get('body', '')
+    
+    # Handle OPTIONS preflight
+    if method == "OPTIONS":
+        return {
+            "statusCode": 204,
+            "headers": headers,
+            "body": ""
+        }
+    
+    # Handle GET requests
+    if method == "GET":
+        if path == "/api/config" or path.endswith("/api/config"):
+            config = {
+                "api_base": DEFAULT_API_BASE,
+                "image_model": DEFAULT_IMAGE_MODEL,
+                "video_model": DEFAULT_VIDEO_MODEL,
+                "has_api_key": bool(DEFAULT_API_KEY)
+            }
+            return {
+                "statusCode": 200,
+                "headers": headers,
+                "body": json.dumps(config)
+            }
+        
+        return {
+            "statusCode": 404,
+            "headers": headers,
+            "body": json.dumps({"error": "Not found"})
+        }
+    
+    # Handle POST requests
+    if method == "POST":
+        if path == "/api/generate" or path.endswith("/api/generate"):
+            try:
+                result, status_code = handle_generate(body)
+                return {
+                    "statusCode": status_code,
+                    "headers": headers,
+                    "body": json.dumps(result)
+                }
+            except Exception as e:
+                return {
+                    "statusCode": 500,
+                    "headers": headers,
+                    "body": json.dumps({"error": str(e)})
+                }
+        
+        return {
+            "statusCode": 404,
+            "headers": headers,
+            "body": json.dumps({"error": "Not found"})
+        }
+    
+    return {
+        "statusCode": 405,
+        "headers": headers,
+        "body": json.dumps({"error": "Method not allowed"})
+    }
