@@ -6,6 +6,7 @@ import json
 import urllib.request
 import urllib.error
 import os
+from http.server import BaseHTTPRequestHandler
 
 # 從環境變數讀取配置
 DEFAULT_API_BASE = os.environ.get("API_BASE", "https://api.openai.com/v1")
@@ -135,76 +136,46 @@ def handle_generate(body):
         return {"error": str(e)}, 500
 
 
-def handler(request, context):
-    """Vercel serverless handler - required entry point"""
-    
-    # CORS headers
-    headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Content-Type": "application/json"
-    }
-    
-    # Get HTTP method
-    method = request.get('httpMethod', 'GET')
-    path = request.get('path', '/')
-    body = request.get('body', '')
-    
-    # Handle OPTIONS preflight
-    if method == "OPTIONS":
-        return {
-            "statusCode": 204,
-            "headers": headers,
-            "body": ""
-        }
-    
-    # Handle GET requests
-    if method == "GET":
-        if path == "/api/config" or path.endswith("/api/config"):
+class handler(BaseHTTPRequestHandler):
+    def _set_headers(self, status_code=200):
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_OPTIONS(self):
+        self._set_headers(204)
+
+    def do_GET(self):
+        if self.path.endswith("/api/config") or "/config" in self.path:
             config = {
                 "api_base": DEFAULT_API_BASE,
                 "image_model": DEFAULT_IMAGE_MODEL,
                 "video_model": DEFAULT_VIDEO_MODEL,
                 "has_api_key": bool(DEFAULT_API_KEY)
             }
-            return {
-                "statusCode": 200,
-                "headers": headers,
-                "body": json.dumps(config)
-            }
-        
-        return {
-            "statusCode": 404,
-            "headers": headers,
-            "body": json.dumps({"error": "Not found"})
-        }
-    
-    # Handle POST requests
-    if method == "POST":
-        if path == "/api/generate" or path.endswith("/api/generate"):
+            self._set_headers(200)
+            self.wfile.write(json.dumps(config).encode('utf-8'))
+            return
+
+        self._set_headers(404)
+        self.wfile.write(json.dumps({"error": "Not found"}).encode('utf-8'))
+
+    def do_POST(self):
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else ''
+
+        if self.path.endswith("/api/generate") or "/generate" in self.path:
             try:
                 result, status_code = handle_generate(body)
-                return {
-                    "statusCode": status_code,
-                    "headers": headers,
-                    "body": json.dumps(result)
-                }
+                self._set_headers(status_code)
+                self.wfile.write(json.dumps(result).encode('utf-8'))
             except Exception as e:
-                return {
-                    "statusCode": 500,
-                    "headers": headers,
-                    "body": json.dumps({"error": str(e)})
-                }
-        
-        return {
-            "statusCode": 404,
-            "headers": headers,
-            "body": json.dumps({"error": "Not found"})
-        }
-    
-    return {
-        "statusCode": 405,
-        "headers": headers,
-        "body": json.dumps({"error": "Method not allowed"})
-    }
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            return
+
+        self._set_headers(404)
+        self.wfile.write(json.dumps({"error": "Not found"}).encode('utf-8'))
