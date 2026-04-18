@@ -1,2 +1,2 @@
-# No external dependencies required
-# Python standard library only
+# Vercel Python requirements
+# No external dependencies required - uses only Python standard library
