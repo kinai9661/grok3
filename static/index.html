@@ -12,8 +12,35 @@
         <div class="lang-switch">
             <button id="langZh" class="lang-btn active">中文</button>
             <button id="langEn" class="lang-btn">English</button>
+            <button id="settingsBtn" class="settings-btn" title="設定">⚙️</button>
         </div>
-        
+    
+        <!-- API 設定面板 -->
+        <div id="settingsPanel" class="settings-panel" style="display: none;">
+            <h3 id="settingsTitle">API 設定</h3>
+            <div class="settings-group">
+                <label for="apiBase" id="labelApiBase">API Base URL：</label>
+                <input type="text" id="apiBase" name="apiBase" placeholder="https://api.openai.com/v1">
+            </div>
+            <div class="settings-group">
+                <label for="apiKey" id="labelApiKey">API Key：</label>
+                <input type="password" id="apiKey" name="apiKey" placeholder="sk-...">
+            </div>
+            <div class="settings-group">
+                <label for="imageModel" id="labelImageModel">圖片模型：</label>
+                <input type="text" id="imageModel" name="imageModel" placeholder="dall-e-3">
+            </div>
+            <div class="settings-group">
+                <label for="videoModel" id="labelVideoModel">影片模型：</label>
+                <input type="text" id="videoModel" name="videoModel" placeholder="grok-imagine-video">
+            </div>
+            <div class="settings-buttons">
+                <button type="button" id="saveSettings" class="save-settings-btn" data-zh="儲存設定" data-en="Save">儲存設定</button>
+                <button type="button" id="resetSettings" class="reset-settings-btn" data-zh="重置" data-en="Reset">重置</button>
+            </div>
+            <p class="settings-hint" id="settingsHint">提示：設定會儲存在瀏覽器本地，重新載入頁面後仍會保留。</p>
+        </div>
+    
         <h1 id="title">AI 圖片 & 影片 生成</h1>
         <form id="genForm">
             <label for="prompt" id="labelPrompt">描述文字 (Prompt)：</label>
@@ -21,24 +48,33 @@
             
             <label for="type" id="labelType">生成類型：</label>
             <select id="type" name="type">
-                <option value="image" data-zh="圖片" data-en="Image">圖片</option>
-                <option value="video" data-zh="影片" data-en="Video">影片</option>
+                <option value="text-to-image" data-zh="文字生圖" data-en="Text → Image">文字生圖</option>
+                <option value="image-edit" data-zh="圖片編輯" data-en="Image → Image (Edit)">圖片編輯</option>
+                <option value="text-to-video" data-zh="文字生影片" data-en="Text → Video">文字生影片</option>
+                <option value="image-to-video" data-zh="圖片生影片" data-en="Image → Video">圖片生影片</option>
             </select>
             
-            <!-- 影片進階選項 -->
+            <!-- 影片進階選項 (text-to-video, image-to-video) -->
             <div id="videoOptions" class="advanced-options" style="display: none;">
                 <h3 id="videoOptionsTitle">影片進階選項</h3>
-                
+            
                 <label for="videoDuration" id="labelVideoDuration">影片長度：</label>
                 <select id="videoDuration" name="videoDuration">
                     <option value="5" selected>5 秒</option>
                 </select>
-                
+            
                 <label for="videoResolution" id="labelVideoResolution">解析度：</label>
                 <select id="videoResolution" name="videoResolution">
                     <option value="480p" selected>480p</option>
                 </select>
-                
+            
+                <label for="videoAspectRatio" id="labelVideoAspectRatio">比例：</label>
+                <select id="videoAspectRatio" name="videoAspectRatio">
+                    <option value="16:9" selected>16:9</option>
+                    <option value="9:16">9:16</option>
+                    <option value="1:1">1:1</option>
+                </select>
+            
                 <label for="videoStyle" id="labelVideoStyle">影片風格：</label>
                 <select id="videoStyle" name="videoStyle">
                     <option value="" selected data-zh="預設" data-en="Default">預設</option>
@@ -48,10 +84,10 @@
                 </select>
             </div>
             
-            <!-- 圖片進階選項 -->
+            <!-- 圖片進階選項 (text-to-image, image-edit) -->
             <div id="imageOptions" class="advanced-options">
                 <h3 id="imageOptionsTitle">圖片進階選項</h3>
-                
+            
                 <label for="imageSize" id="labelImageSize">圖片尺寸：</label>
                 <select id="imageSize" name="imageSize">
                     <option value="1024x1024" selected>1:1 (1024x1024)</option>
@@ -60,7 +96,7 @@
                     <option value="1792x1024">16:9 (1792x1024)</option>
                     <option value="1024x1792">9:16 (1024x1792)</option>
                 </select>
-                
+            
                 <label for="imageCount" id="labelImageCount">生成數量：</label>
                 <select id="imageCount" name="imageCount">
                     <option value="1" selected data-zh="1 張" data-en="1 image">1 張</option>
@@ -68,15 +104,22 @@
                     <option value="3" data-zh="3 張" data-en="3 images">3 張</option>
                     <option value="4" data-zh="4 張" data-en="4 images">4 張</option>
                 </select>
+            
+                <label for="imageResolution" id="labelImageResolution">解析度：</label>
+                <select id="imageResolution" name="imageResolution">
+                    <option value="1k" selected>1K</option>
+                    <option value="2k">2K</option>
+                    <option value="4k">4K</option>
+                </select>
             </div>
             
-            <!-- 圖片生圖功能 -->
-            <div id="imageToImageSection" class="image-to-image-section">
-                <h3 id="i2iTitle">圖片生圖 (Image-to-Image)</h3>
-                <p class="hint" id="i2iHint">上傳一張參考圖片，AI 將基於該圖片進行風格轉換或修改</p>
-                
+            <!-- 圖片上傳區域 (image-edit, image-to-video) -->
+            <div id="imageUploadSection" class="image-to-image-section" style="display: none;">
+                <h3 id="uploadTitle">上傳參考圖片</h3>
+                <p class="hint" id="uploadHint">請上傳一張圖片作為參考</p>
+            
                 <label class="upload-label" for="referenceImage">
-                    <span id="uploadText">📁 選擇參考圖片</span>
+                    <span id="uploadText">📁 選擇圖片</span>
                     <input type="file" id="referenceImage" name="referenceImage" accept="image/*">
                 </label>
                 <div id="imagePreview" class="image-preview"></div>
