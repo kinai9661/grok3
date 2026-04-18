@@ -406,8 +406,12 @@ document.getElementById('genForm').addEventListener('submit', async function (e)
         payload.resolution = document.getElementById('videoResolution').value;
         payload.aspect_ratio = document.getElementById('videoAspectRatio').value;
         payload.style = document.getElementById('videoStyle').value;
-    } else {
+    } else if (type === 'text-to-image') {
+        // text-to-image: 使用 size, n
         payload.size = document.getElementById('imageSize').value;
+        payload.n = parseInt(document.getElementById('imageCount').value, 10);
+    } else if (type === 'image-edit') {
+        // image-edit: 使用 resolution, n
         payload.n = parseInt(document.getElementById('imageCount').value, 10);
         payload.resolution = document.getElementById('imageResolution').value;
     }
@@ -419,12 +423,16 @@ document.getElementById('genForm').addEventListener('submit', async function (e)
             return;
         }
         const file = referenceInput.files[0];
+        // 取得圖片 MIME type (jpeg, png, etc.)
+        const mimeMatch = file.type.match(/image\/(\w+)/);
+        const imageMime = mimeMatch ? mimeMatch[1] : 'jpeg';
         const base64 = await new Promise((res) => {
             const r = new FileReader();
             r.onload = () => res(r.result.split(',')[1]);
             r.readAsDataURL(file);
         });
         payload.reference_image = base64;
+        payload.image_mime = imageMime;
     }
     
     // 顯示載入中

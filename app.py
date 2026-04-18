@@ -98,6 +98,7 @@ def handle_generate(body, headers=None):
             resolution = data.get("resolution", "480p")
             aspect_ratio = data.get("aspect_ratio", "16:9")
             reference_image = data.get("reference_image")
+            image_mime = data.get("image_mime", "jpeg")
 
             if not reference_image:
                 return {"error": "Reference image required for image-to-video"}, 400
@@ -109,17 +110,17 @@ def handle_generate(body, headers=None):
                 "resolution": resolution,
                 "aspect_ratio": aspect_ratio,
                 "image": {
-                    "url": f"data:image/jpeg;base64,{reference_image}"
+                    "url": f"data:image/{image_mime};base64,{reference_image}"
                 }
             }
 
         elif gen_type == "image-edit":
             # Image → Image (Edit)
             endpoint = f"{api_base}/images/edits"
-            size = data.get("size", "1024x1024")
             n = data.get("n", 1)
             resolution = data.get("resolution", "1k")
             reference_image = data.get("reference_image")
+            image_mime = data.get("image_mime", "jpeg")
 
             if not reference_image:
                 return {"error": "Reference image required for image-edit"}, 400
@@ -130,7 +131,7 @@ def handle_generate(body, headers=None):
                 "model": image_model,
                 "resolution": resolution,
                 "image": {
-                    "url": f"data:image/jpeg;base64,{reference_image}"
+                    "url": f"data:image/{image_mime};base64,{reference_image}"
                 }
             }
 
