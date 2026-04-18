@@ -1,5 +1,5 @@
 [package]
-name = "ai-generator"
+name = "ai-image-video-gen"
 version = "1.0.0"
 description = "AI Image & Video Generator"
 license = "MIT"
